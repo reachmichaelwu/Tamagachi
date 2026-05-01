@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokémon Tamagotchi</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #ffd86b 0%, #ff7f50 50%, #d63384 100%);
+    font-family: 'Trebuchet MS', 'Verdana', sans-serif;
+    padding: 20px;
+    overflow-x: hidden;
+  }
+
+  /* Tamagotchi device shell */
+  .device {
+    width: 520px;
+    background: linear-gradient(145deg, #ff5577, #c0234e);
+    border-radius: 50% 50% 45% 45% / 22% 22% 30% 30%;
+    padding: 50px 40px 70px;
+    box-shadow:
+      inset 0 -10px 25px rgba(0,0,0,0.3),
+      inset 0 10px 25px rgba(255,255,255,0.2),
+      0 20px 40px rgba(0,0,0,0.4);
+    position: relative;
+  }
+
+  .device::before {
+    content: '';
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 10px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px;
+  }
+
+  .brand {
+    text-align: center;
+    color: #fff;
+    font-size: 18px;
+    letter-spacing: 4px;
+    margin-bottom: 16px;
+    text-shadow: 2px 2px 3px rgba(0,0,0,0.5);
+    font-weight: bold;
+  }
+
+  /* The screen */
+  .screen {
+    background: linear-gradient(180deg, #aacc99, #88aa77);
+    border: 8px solid #2c1810;
+    border-radius: 14px;
+    padding: 18px;
+    min-height: 460px;
+    box-shadow:
+      inset 0 4px 8px rgba(0,0,0,0.3),
+      inset 0 -4px 8px rgba(255,255,255,0.2);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .screen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.04) 0px,
+      rgba(0,0,0,0.04) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events: none;
+  }
+
+  .screen-content {
+    position: relative;
+    z-index: 1;
+    color: #1a2818;
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 600;
+  }
+
+  /* === Titles === */
+  .title {
+    text-align: center;
+    font-size: 20px;
+    margin-bottom: 8px;
+    color: #1a2818;
+    font-weight: 800;
+    letter-spacing: 1px;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 13px;
+    margin-bottom: 14px;
+    color: #2c4422;
+  }
+
+  /* === Selection screen === */
+  .pokemon-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .pokemon-choice {
+    background: rgba(255,255,255,0.3);
+    border: 2px solid #2c1810;
+    border-radius: 8px;
+    padding: 8px 6px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+  }
+
+  .pokemon-choice:hover {
+    background: rgba(255,255,255,0.55);
+    transform: translateY(-3px);
+  }
+
+  .pokemon-choice.selected {
+    background: rgba(255,220,100,0.7);
+    box-shadow: 0 0 0 3px #c08020;
+  }
+
+  .pokemon-choice img {
+    width: 64px;
+    height: 64px;
+    image-rendering: pixelated;
+    filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.3));
+  }
+
+  .pokemon-choice .name {
+    font-size: 11px;
+    margin-top: 4px;
+    color: #1a2818;
+    font-weight: 700;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 8px;
+    margin: 8px 0;
+    align-items: center;
+  }
+
+  .form-row label {
+    flex: 0 0 90px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1a2818;
+  }
+
+  .form-row input {
+    flex: 1;
+    padding: 8px 10px;
+    border: 2px solid #1a2818;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.6);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a2818;
+  }
+
+  .form-row input:focus {
+    outline: none;
+    background: rgba(255,255,255,0.9);
+  }
+
+  .start-btn {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    background: #1a2818;
+    color: #aacc99;
+    border: none;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    letter-spacing: 1px;
+  }
+  .start-btn:hover { background: #2c4422; }
+  .start-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* === Game screen === */
+  .game-screen { display: none; }
+  .game-screen.active { display: block; }
+  .selection-screen.hidden { display: none; }
+
+  .pet-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    margin-bottom: 6px;
+    color: #1a2818;
+    font-weight: 700;
+    background: rgba(0,0,0,0.08);
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+
+  .location-banner {
+    text-align: center;
+    font-size: 12px;
+    color: #2c4422;
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+
+  .pet-stage {
+    text-align: center;
+    margin: 4px 0;
+    position: relative;
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-grad, linear-gradient(180deg, rgba(170,200,150,0), rgba(140,180,120,0.4)));
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .pet-sprite {
+    width: 120px;
+    height: 120px;
+    image-rendering: pixelated;
+    filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.25));
+    animation: bob 2s ease-in-out infinite;
+    transition: transform 0.3s, width 0.3s, height 0.3s;
+    transform-origin: center;
+  }
+
+  .pet-sprite.sleeping { animation: sleep 3s ease-in-out infinite; }
+  .pet-sprite.happy   { animation: jump 0.5s ease-in-out 3; }
+  .pet-sprite.sad     {
+    filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.25)) grayscale(0.6);
+    animation: none;
+  }
+
+  @keyframes bob {
+    0%, 100% { transform: scale(var(--zoom,1)) translateY(0); }
+    50%      { transform: scale(var(--zoom,1)) translateY(-8px); }
+  }
+  @keyframes jump {
+    0%, 100% { transform: scale(var(--zoom,1)) translateY(0); }
+    50%      { transform: scale(var(--zoom,1)) translateY(-25px) rotate(-5deg); }
+  }
+  @keyframes sleep {
+    0%, 100% { transform: scale(var(--zoom,1)) translateY(0) rotate(0deg); }
+    50%      { transform: scale(var(--zoom,1)) translateY(-2px) rotate(2deg); }
+  }
+
+  .zzz {
+    position: absolute;
+    top: 14px;
+    right: 30%;
+    font-size: 22px;
+    color: #1a2818;
+    animation: float 2s ease-in-out infinite;
+    font-weight: 800;
+  }
+  @keyframes float {
+    0%   { opacity: 0; transform: translateY(0); }
+    50%  { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-25px); }
+  }
+
+  .heart-anim {
+    position: absolute;
+    font-size: 24px;
+    animation: pop 1s ease-out forwards;
+    pointer-events: none;
+    z-index: 5;
+  }
+  @keyframes pop {
+    0%   { opacity: 0; transform: scale(0.5) translateY(0); }
+    30%  { opacity: 1; transform: scale(1.4) translateY(-12px); }
+    100% { opacity: 0; transform: scale(1) translateY(-50px); }
+  }
+
+  .poop {
+    position: absolute;
+    bottom: 12px;
+    font-size: 24px;
+    cursor: pointer;
+    animation: appear 0.3s ease-out;
+    z-index: 4;
+  }
+  @keyframes appear {
+    from { transform: scale(0); }
+    to   { transform: scale(1); }
+  }
+
+  /* Zoom controls overlay */
+  .zoom-controls {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 6;
+  }
+  .zoom-btn {
+    width: 30px;
+    height: 30px;
+    border: 2px solid #1a2818;
+    background: rgba(255,255,255,0.6);
+    color: #1a2818;
+    font-weight: 800;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .zoom-btn:hover { background: rgba(255,255,255,0.9); }
+  .zoom-level {
+    text-align: center;
+    font-size: 10px;
+    color: #1a2818;
+    background: rgba(255,255,255,0.6);
+    border-radius: 4px;
+    padding: 2px;
+  }
+
+  /* === Stats === */
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 14px;
+    margin-top: 8px;
+    font-size: 11px;
+  }
+
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .stat-label {
+    width: 50px;
+    color: #1a2818;
+    font-weight: 700;
+    font-size: 11px;
+  }
+
+  .bar {
+    flex: 1;
+    height: 14px;
+    background: rgba(0,0,0,0.2);
+    border: 2px solid #1a2818;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: #1a2818;
+    transition: width 0.4s ease, background 0.4s ease;
+  }
+  .bar-fill.low { background: #b03030; }
+  .bar-fill.mid { background: #c08020; }
+
+  .message-box {
+    margin-top: 10px;
+    text-align: center;
+    min-height: 22px;
+    font-size: 13px;
+    color: #1a2818;
+    font-style: italic;
+    font-weight: 600;
+    background: rgba(0,0,0,0.08);
+    padding: 6px;
+    border-radius: 6px;
+  }
+
+  /* === Buttons row === */
+  .buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    margin-top: 30px;
+    gap: 10px;
+  }
+
+  /* === Chat / Study panel === */
+  .chat-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-top: 8px;
+    min-height: 0;
+  }
+  .topic-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  .chip {
+    background: rgba(255,255,255,0.4);
+    border: 2px solid #1a2818;
+    border-radius: 14px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    color: #1a2818;
+    font-family: inherit;
+  }
+  .chip:hover { background: rgba(255,220,100,0.6); }
+  .chat-log {
+    flex: 1;
+    overflow-y: auto;
+    background: rgba(255,255,255,0.25);
+    border: 2px solid #1a2818;
+    border-radius: 8px;
+    padding: 8px;
+    margin-bottom: 6px;
+    min-height: 140px;
+    max-height: 240px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .msg {
+    max-width: 85%;
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.4;
+    word-wrap: break-word;
+  }
+  .msg.pet {
+    align-self: flex-start;
+    background: #fff8e0;
+    border: 1.5px solid #1a2818;
+    border-bottom-left-radius: 2px;
+    color: #1a2818;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: #1a2818;
+    color: #aacc99;
+    border-bottom-right-radius: 2px;
+    font-weight: 600;
+  }
+  .msg.pet .who {
+    font-size: 9px;
+    font-weight: 800;
+    color: #6b5a2e;
+    margin-bottom: 2px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .chat-input-row {
+    display: flex;
+    gap: 6px;
+  }
+  .chat-input-row input {
+    flex: 1;
+    padding: 8px 10px;
+    border: 2px solid #1a2818;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.7);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a2818;
+  }
+  .chat-input-row input:focus { outline: none; background: rgba(255,255,255,0.95); }
+  .send-btn {
+    padding: 0 14px;
+    background: #1a2818;
+    color: #aacc99;
+    border: none;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .send-btn:hover { background: #2c4422; }
+
+  .btn {
+    padding: 10px 4px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(145deg, #fff8e0, #d4c8a0);
+    box-shadow:
+      0 5px 0 #6b5a2e,
+      inset 0 2px 4px rgba(255,255,255,0.6),
+      inset 0 -2px 4px rgba(0,0,0,0.2);
+    cursor: pointer;
+    font-family: inherit;
+    color: #2c1810;
+    transition: all 0.1s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    aspect-ratio: 1;
+    font-weight: 700;
+  }
+
+  .btn:hover { background: linear-gradient(145deg, #fff5d0, #e8d8a8); }
+
+  .btn:active {
+    transform: translateY(4px);
+    box-shadow:
+      0 1px 0 #6b5a2e,
+      inset 0 2px 4px rgba(0,0,0,0.2);
+  }
+
+  .btn .icon { font-size: 22px; margin-bottom: 3px; }
+  .btn .label { font-size: 9px; font-weight: 800; letter-spacing: 0.5px; }
+
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* === Modal panels (travel, egg hunt) === */
+  .panel {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, #aacc99, #88aa77);
+    z-index: 10;
+    padding: 18px;
+    display: none;
+    flex-direction: column;
+  }
+  .panel.active { display: flex; }
+
+  .panel-title {
+    font-size: 18px;
+    text-align: center;
+    margin-bottom: 8px;
+    font-weight: 800;
+    color: #1a2818;
+  }
+
+  .panel-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #1a2818;
+    color: #aacc99;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    font-weight: 800;
+    font-size: 14px;
+    z-index: 11;
+  }
+
+  /* Travel locations */
+  .location-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .location-card {
+    background: rgba(255,255,255,0.35);
+    border: 2px solid #1a2818;
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+  }
+  .location-card:hover {
+    background: rgba(255,255,255,0.55);
+    transform: translateY(-2px);
+  }
+  .location-card.current {
+    background: rgba(255,220,100,0.6);
+    box-shadow: inset 0 0 0 3px #c08020;
+  }
+  .location-card .emoji { font-size: 36px; }
+  .location-card .name { font-size: 12px; font-weight: 800; margin: 2px 0; }
+  .location-card .desc { font-size: 10px; color: #2c4422; }
+
+  /* Egg hunt */
+  .egg-field {
+    flex: 1;
+    background: linear-gradient(180deg, #c8e090, #a8c878);
+    border: 2px solid #1a2818;
+    border-radius: 8px;
+    margin-top: 8px;
+    position: relative;
+    min-height: 220px;
+    overflow: hidden;
+  }
+
+  .bush, .grass-tuft {
+    position: absolute;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.15s;
+  }
+  .bush:hover, .grass-tuft:hover { transform: scale(1.1); }
+
+  .bush { font-size: 36px; }
+  .grass-tuft { font-size: 30px; }
+
+  .found-egg {
+    position: absolute;
+    font-size: 32px;
+    pointer-events: none;
+    animation: pop 1.2s ease-out forwards;
+  }
+
+  .egg-stats {
+    display: flex;
+    justify-content: space-around;
+    font-size: 12px;
+    font-weight: 700;
+    margin-top: 8px;
+    color: #1a2818;
+    background: rgba(0,0,0,0.08);
+    padding: 6px;
+    border-radius: 6px;
+  }
+
+  .egg-result {
+    text-align: center;
+    font-size: 13px;
+    margin-top: 8px;
+    min-height: 20px;
+    font-weight: 700;
+    color: #1a2818;
+  }
+
+  /* Game over */
+  .game-over {
+    text-align: center;
+    padding: 40px 20px;
+  }
+  .game-over h2 {
+    font-size: 22px;
+    margin-bottom: 14px;
+    color: #1a2818;
+  }
+  .game-over p {
+    font-size: 13px;
+    margin-bottom: 18px;
+    line-height: 1.6;
+  }
+  .restart-btn {
+    background: #2c1810;
+    color: #aacc99;
+    border: none;
+    padding: 12px 22px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    border-radius: 6px;
+  }
+
+  /* Evolution */
+  .evolving { animation: evolve 2s ease-in-out; }
+  @keyframes evolve {
+    0%, 100% { filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.25)) brightness(1); }
+    25% { filter: brightness(3) drop-shadow(0 0 20px white); }
+    50% { filter: brightness(5) drop-shadow(0 0 30px white); }
+    75% { filter: brightness(3) drop-shadow(0 0 20px white); }
+  }
+
+  /* Companion sprite (from egg hunt) */
+  .companion {
+    position: absolute;
+    bottom: 8px;
+    width: 50px;
+    height: 50px;
+    image-rendering: pixelated;
+    filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.25));
+    animation: bob 2.4s ease-in-out infinite;
+  }
+
+  /* Inventory */
+  .inventory {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    margin-top: 6px;
+    padding: 6px;
+    background: rgba(0,0,0,0.06);
+    border-radius: 6px;
+    min-height: 28px;
+  }
+  .inv-item {
+    background: rgba(255,255,255,0.5);
+    border: 1px solid #1a2818;
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+
+<div class="device">
+  <div class="brand">PokéTama</div>
+  <div class="screen">
+    <div class="screen-content">
+
+      <!-- Selection Screen -->
+      <div class="selection-screen" id="selectionScreen">
+        <div class="title">CHOOSE YOUR PAL</div>
+        <div class="subtitle">Pick a Pokémon, then name it!</div>
+        <div class="pokemon-grid" id="pokemonGrid"></div>
+        <div class="form-row">
+          <label for="nameInput">Name:</label>
+          <input id="nameInput" type="text" maxlength="12" placeholder="Sparky">
+        </div>
+        <div class="form-row">
+          <label for="ageInput">Age (days):</label>
+          <input id="ageInput" type="number" min="0" max="999" value="0">
+        </div>
+        <button class="start-btn" id="startBtn" disabled onclick="startGame()">
+          HATCH PARTNER!
+        </button>
+      </div>
+
+      <!-- Game Screen -->
+      <div class="game-screen" id="gameScreen">
+        <div class="pet-info">
+          <span id="petName">--</span>
+          <span>Lv <span id="petLevel">1</span></span>
+          <span>Age: <span id="petAge">0</span>d</span>
+        </div>
+        <div class="location-banner" id="locationBanner">📍 Home</div>
+
+        <div class="pet-stage" id="petStage">
+          <div class="zoom-controls">
+            <button class="zoom-btn" onclick="zoomIn()" title="Zoom in">+</button>
+            <div class="zoom-level" id="zoomLevel">100%</div>
+            <button class="zoom-btn" onclick="zoomOut()" title="Zoom out">−</button>
+          </div>
+          <img class="pet-sprite" id="petSprite" src="" alt="pet">
+        </div>
+
+        <div class="message-box" id="messageBox">A new friend appears!</div>
+
+        <div class="stats">
+          <div class="stat"><span class="stat-label">HP</span>
+            <div class="bar"><div class="bar-fill" id="hpBar" style="width:100%"></div></div></div>
+          <div class="stat"><span class="stat-label">FOOD</span>
+            <div class="bar"><div class="bar-fill" id="hungerBar" style="width:100%"></div></div></div>
+          <div class="stat"><span class="stat-label">FUN</span>
+            <div class="bar"><div class="bar-fill" id="funBar" style="width:100%"></div></div></div>
+          <div class="stat"><span class="stat-label">ZZZ</span>
+            <div class="bar"><div class="bar-fill" id="energyBar" style="width:100%"></div></div></div>
+          <div class="stat"><span class="stat-label">CLEAN</span>
+            <div class="bar"><div class="bar-fill" id="cleanBar" style="width:100%"></div></div></div>
+          <div class="stat"><span class="stat-label">XP</span>
+            <div class="bar"><div class="bar-fill" id="xpBar" style="width:0%; background:#3060a0"></div></div></div>
+        </div>
+
+        <div class="inventory" id="inventory" title="Items collected"></div>
+
+        <!-- Travel Panel -->
+        <div class="panel" id="travelPanel">
+          <button class="panel-close" onclick="closePanel('travelPanel')">✕</button>
+          <div class="panel-title">🗺️ TRAVEL THE WORLD</div>
+          <div class="location-grid" id="locationGrid"></div>
+        </div>
+
+        <!-- Study / Chat Panel -->
+        <div class="panel" id="chatPanel">
+          <button class="panel-close" onclick="closePanel('chatPanel')">✕</button>
+          <div class="panel-title">📚 STUDY TIME</div>
+          <div class="chat-wrap">
+            <div class="topic-chips" id="topicChips"></div>
+            <div class="chat-log" id="chatLog"></div>
+            <div class="chat-input-row">
+              <input id="chatInput" type="text" placeholder="Ask a question..." maxlength="120">
+              <button class="send-btn" onclick="sendChat()">SEND</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Egg Hunt Panel -->
+        <div class="panel" id="eggPanel">
+          <button class="panel-close" onclick="endEggHunt()">✕</button>
+          <div class="panel-title">🥚 EGG HUNT</div>
+          <div class="egg-stats">
+            <span>Found: <span id="eggsFound">0</span>/<span id="eggsTotal">5</span></span>
+            <span>Time: <span id="eggTime">30</span>s</span>
+          </div>
+          <div class="egg-field" id="eggField"></div>
+          <div class="egg-result" id="eggResult">Tap bushes & grass to hunt!</div>
+        </div>
+
+      </div>
+
+      <!-- Game Over -->
+      <div class="game-over" id="gameOverScreen" style="display:none;">
+        <h2>OH NO!</h2>
+        <p id="gameOverText">Your Pokémon has fainted...</p>
+        <button class="restart-btn" onclick="restart()">START OVER</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="buttons" id="actionButtons" style="display:none;">
+    <button class="btn" onclick="feed()">
+      <span class="icon">🍎</span><span class="label">FEED</span>
+    </button>
+    <button class="btn" onclick="play()">
+      <span class="icon">⚽</span><span class="label">PLAY</span>
+    </button>
+    <button class="btn" onclick="toggleSleep()">
+      <span class="icon">💤</span><span class="label">SLEEP</span>
+    </button>
+    <button class="btn" onclick="clean()">
+      <span class="icon">🧼</span><span class="label">CLEAN</span>
+    </button>
+    <button class="btn" onclick="openTravel()">
+      <span class="icon">🗺️</span><span class="label">TRAVEL</span>
+    </button>
+    <button class="btn" onclick="startEggHunt()">
+      <span class="icon">🥚</span><span class="label">EGG HUNT</span>
+    </button>
+    <button class="btn" onclick="openChat()">
+      <span class="icon">📚</span><span class="label">LEARN</span>
+    </button>
+  </div>
+</div>
+
+<script>
+// === Custom (non-Pokémon) sprites — drawn inline as SVG ===
+const SHIBA_COLORS = {
+  body: '#d97a3c',
+  bodyDark: '#a85a25',
+  cream: '#f5ead0',
+  dark: '#2a1810',
+  pink: '#ff8da0',
+  gold: '#ffd34d',
+};
+
+function shibaSVG(stage) {
+  const c = SHIBA_COLORS;
+  let body;
+  if (stage === 0) {
+    // Puppy — tiny, round, big head, sitting
+    body = `
+      <ellipse cx="32" cy="50" rx="14" ry="10" fill="${c.body}" stroke="${c.dark}" stroke-width="1.5"/>
+      <ellipse cx="32" cy="54" rx="8" ry="5" fill="${c.cream}"/>
+      <polygon points="20,28 24,18 28,28" fill="${c.body}" stroke="${c.dark}" stroke-width="1.5"/>
+      <polygon points="44,28 40,18 36,28" fill="${c.body}" stroke="${c.dark}" stroke-width="1.5"/>
+      <polygon points="22,26 24,21 25,26" fill="${c.dark}"/>
+      <polygon points="42,26 40,21 39,26" fill="${c.dark}"/>
+      <circle cx="32" cy="32" r="13" fill="${c.body}" stroke="${c.dark}" stroke-width="1.5"/>
+      <ellipse cx="32" cy="36" rx="9" ry="6" fill="${c.cream}"/>
+      <circle cx="28" cy="31" r="2" fill="${c.dark}"/>
+      <circle cx="36" cy="31" r="2" fill="${c.dark}"/>
+      <circle cx="28.6" cy="30.4" r="0.6" fill="white"/>
+      <circle cx="36.6" cy="30.4" r="0.6" fill="white"/>
+      <ellipse cx="32" cy="36" rx="1.5" ry="1.1" fill="${c.dark}"/>
+      <path d="M30 38 Q32 40 34 38" fill="none" stroke="${c.dark}" stroke-width="1" stroke-linecap="round"/>
+      <path d="M44 46 Q50 42 48 38 Q46 40 47 44" fill="${c.body}" stroke="${c.dark}" stroke-width="1.5"/>
+      <ellipse cx="25" cy="58" rx="3" ry="2" fill="${c.cream}" stroke="${c.dark}" stroke-width="1"/>
+      <ellipse cx="39" cy="58" rx="3" ry="2" fill="${c.cream}" stroke="${c.dark}" stroke-width="1"/>
+    `;
+  } else if (stage === 1) {
+    // Adult Shiba — classic standing pose, curled tail
+    body = `
+      <polygon points="16,18 22,6 26,18" fill="${c.body}" stroke="${c.dark}" stroke-width="1.5"/>
+      <polygon points="48,18 42,6 38,18" fill="${c.body}" stroke="${c.dark}" stroke-width="1.5"/>
+      <polygon points="19,15 22,9 24,15" fill="${c.dark}"/>
+      <polygon points="45,15 42,9 40,15" fill="${c.dark}"/>
+      <ellipse cx="32" cy="50" rx="18" ry="11" fill="${c.body}" stroke="${c.dark}" stroke-width="1.5"/>
+      <ellipse cx="32" cy="54" rx="11" ry="6" fill="${c.cream}"/>
+      <circle cx="32" cy="26" r="14" fill="${c.body}" stroke="${c.dark}" stroke-width="1.5"/>
+      <ellipse cx="32" cy="32" rx="10" ry="6" fill="${c.cream}"/>
+      <path d="M22 22 Q24 18 26 22" fill="${c.cream}" stroke="${c.dark}" stroke-width="1"/>
+      <path d="M42 22 Q40 18 38 22" fill="${c.cream}" stroke="${c.dark}" stroke-width="1"/>
+      <path d="M26 24 L29 24 L27.5 27 Z" fill="${c.dark}"/>
+      <path d="M38 24 L35 24 L36.5 27 Z" fill="${c.dark}"/>
+      <ellipse cx="32" cy="31" rx="1.6" ry="1.2" fill="${c.dark}"/>
+      <path d="M28 34 Q32 36 36 34" fill="none" stroke="${c.dark}" stroke-width="1.2" stroke-linecap="round"/>
+      <ellipse cx="32" cy="35.5" rx="1.5" ry="1" fill="${c.pink}"/>
+      <path d="M48 44 Q58 36 54 30 Q48 32 50 42" fill="${c.body}" stroke="${c.dark}" stroke-width="1.5"/>
+      <path d="M48 44 Q56 38 53 33" fill="none" stroke="${c.cream}" stroke-width="2"/>
+      <rect x="20" y="56" width="5" height="6" rx="1.5" fill="${c.body}" stroke="${c.dark}" stroke-width="1"/>
+      <rect x="39" y="56" width="5" height="6" rx="1.5" fill="${c.body}" stroke="${c.dark}" stroke-width="1"/>
+    `;
+  } else {
+    // Mighty Shiba — fluffy, golden, regal
+    body = `
+      <circle cx="32" cy="32" r="22" fill="${c.gold}" opacity="0.35"/>
+      <polygon points="14,18 22,4 28,18" fill="${c.body}" stroke="${c.dark}" stroke-width="1.5"/>
+      <polygon points="50,18 42,4 36,18" fill="${c.body}" stroke="${c.dark}" stroke-width="1.5"/>
+      <polygon points="18,15 22,8 25,15" fill="${c.dark}"/>
+      <polygon points="46,15 42,8 39,15" fill="${c.dark}"/>
+      <ellipse cx="32" cy="48" rx="22" ry="13" fill="${c.body}" stroke="${c.dark}" stroke-width="1.5"/>
+      <path d="M10 48 Q14 42 18 50 Q20 44 24 50" fill="${c.body}" stroke="${c.dark}" stroke-width="1"/>
+      <path d="M54 48 Q50 42 46 50 Q44 44 40 50" fill="${c.body}" stroke="${c.dark}" stroke-width="1"/>
+      <ellipse cx="32" cy="52" rx="13" ry="7" fill="${c.cream}"/>
+      <circle cx="32" cy="26" r="16" fill="${c.body}" stroke="${c.dark}" stroke-width="1.5"/>
+      <path d="M16 18 Q12 22 14 28" fill="${c.body}" stroke="${c.dark}" stroke-width="1"/>
+      <path d="M48 18 Q52 22 50 28" fill="${c.body}" stroke="${c.dark}" stroke-width="1"/>
+      <ellipse cx="32" cy="33" rx="11" ry="7" fill="${c.cream}"/>
+      <path d="M22 22 Q24 17 27 22" fill="${c.cream}" stroke="${c.dark}" stroke-width="1"/>
+      <path d="M42 22 Q40 17 37 22" fill="${c.cream}" stroke="${c.dark}" stroke-width="1"/>
+      <path d="M25 22 L30 22 L27.5 27 Z" fill="${c.dark}"/>
+      <path d="M39 22 L34 22 L36.5 27 Z" fill="${c.dark}"/>
+      <circle cx="27" cy="24" r="0.6" fill="white"/>
+      <circle cx="37" cy="24" r="0.6" fill="white"/>
+      <ellipse cx="32" cy="32" rx="1.8" ry="1.3" fill="${c.dark}"/>
+      <path d="M27 35 Q32 38 37 35" fill="none" stroke="${c.dark}" stroke-width="1.4" stroke-linecap="round"/>
+      <path d="M30 36 Q32 40 34 36 Z" fill="${c.pink}"/>
+      <path d="M50 42 Q62 32 56 22 Q48 26 52 38" fill="${c.body}" stroke="${c.dark}" stroke-width="1.5"/>
+      <path d="M50 42 Q60 33 55 25" fill="none" stroke="${c.cream}" stroke-width="2"/>
+      <rect x="18" y="56" width="6" height="7" rx="2" fill="${c.body}" stroke="${c.dark}" stroke-width="1"/>
+      <rect x="40" y="56" width="6" height="7" rx="2" fill="${c.body}" stroke="${c.dark}" stroke-width="1"/>
+      <polygon points="24,8 27,2 30,8 33,2 36,8 39,2 42,8" fill="${c.gold}" stroke="${c.dark}" stroke-width="1"/>
+      <circle cx="33" cy="6" r="1.2" fill="#ff5577"/>
+    `;
+  }
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>${body}</svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+
+const CUSTOM_SPRITES = {
+  shiba1: shibaSVG(0),
+  shiba2: shibaSVG(1),
+  shiba3: shibaSVG(2),
+};
+
+const POKEMON_SPRITES = id =>
+  CUSTOM_SPRITES[id] ||
+  `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+
+const ROSTER = [
+  { id: 25,  name: 'Pikachu',    line: [25, 26] },
+  { id: 4,   name: 'Charmander', line: [4, 5, 6] },
+  { id: 1,   name: 'Bulbasaur',  line: [1, 2, 3] },
+  { id: 7,   name: 'Squirtle',   line: [7, 8, 9] },
+  { id: 133, name: 'Eevee',      line: [133, 134] },
+  { id: 152, name: 'Chikorita',  line: [152, 153, 154] },
+  { id: 155, name: 'Cyndaquil',  line: [155, 156, 157] },
+  { id: 158, name: 'Totodile',   line: [158, 159, 160] },
+  { id: 39,  name: 'Jigglypuff', line: [39, 40] },
+  { id: 'shiba1', name: 'Shiba Inu', line: ['shiba1', 'shiba2', 'shiba3'] },
+];
+
+const LOCATIONS = [
+  { id: 'home',    emoji: '🏡', name: 'Home',           desc: 'Cozy & safe',    bg: 'linear-gradient(180deg,#cfeacb,#a8d098)', mod: { hp: +0.5 } },
+  { id: 'forest',  emoji: '🌳', name: 'Viridian Forest', desc: 'Berries grow',  bg: 'linear-gradient(180deg,#88c070,#406030)', mod: { hunger: +0.5 } },
+  { id: 'beach',   emoji: '🏖️', name: 'Cerulean Beach', desc: 'Fun & sunny',    bg: 'linear-gradient(180deg,#ffe080,#80c0e0)', mod: { fun: +1 } },
+  { id: 'mtmoon',  emoji: '🏔️', name: 'Mt. Moon',       desc: 'Risk & reward',  bg: 'linear-gradient(180deg,#aab8d0,#5060a0)', mod: { fun: +0.5, energy: -0.5 } },
+  { id: 'volcano', emoji: '🌋', name: 'Volcano Path',   desc: 'Train hard!',    bg: 'linear-gradient(180deg,#ffaa55,#aa3322)', mod: { xp: +1, energy: -1 } },
+  { id: 'ocean',   emoji: '🌊', name: 'Open Ocean',     desc: 'Calm & restful', bg: 'linear-gradient(180deg,#80d0ff,#2060a0)', mod: { energy: +1 } },
+  { id: 'safari',  emoji: '🦓', name: 'Safari Zone',    desc: 'Wild adventures',bg: 'linear-gradient(180deg,#e0c070,#806030)', mod: { fun: +0.7 } },
+  { id: 'sky',     emoji: '☁️', name: 'Sky Pillar',     desc: 'Mythical heights',bg:'linear-gradient(180deg,#a0d0ff,#ffe0f0)', mod: { xp: +0.5, fun: +0.5 } },
+];
+
+let pet = null;
+let tickInterval = null;
+let renderInterval = null;
+let chosenSpecies = null;
+let zoomFactor = 1;
+
+const $ = id => document.getElementById(id);
+
+// === Selection screen ===
+function buildSelection() {
+  const grid = $('pokemonGrid');
+  grid.innerHTML = '';
+  ROSTER.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'pokemon-choice';
+    div.dataset.id = p.id;
+    div.innerHTML = `
+      <img src="${POKEMON_SPRITES(p.id)}" alt="${p.name}">
+      <div class="name">${p.name.toUpperCase()}</div>
+    `;
+    div.onclick = () => selectSpecies(p, div);
+    grid.appendChild(div);
+  });
+  $('nameInput').addEventListener('input', updateStartBtn);
+}
+
+function selectSpecies(p, el) {
+  chosenSpecies = p;
+  document.querySelectorAll('.pokemon-choice').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  if (!$('nameInput').value) $('nameInput').value = p.name;
+  updateStartBtn();
+}
+
+function updateStartBtn() {
+  $('startBtn').disabled = !(chosenSpecies && $('nameInput').value.trim());
+}
+
+function startGame() {
+  const name = $('nameInput').value.trim() || chosenSpecies.name;
+  const startAge = Math.max(0, parseInt($('ageInput').value) || 0);
+  pet = {
+    species: chosenSpecies,
+    stage: 0,
+    name,
+    level: 1 + Math.floor(startAge / 3),
+    xp: 0,
+    age: startAge,
+    hp: 100,
+    hunger: 90,
+    fun: 80,
+    energy: 90,
+    clean: 100,
+    sleeping: false,
+    poops: 0,
+    born: Date.now() - startAge * 60000,
+    sick: false,
+    alive: true,
+    location: LOCATIONS[0],
+    inventory: { berry: 0, candy: 0, gem: 0, egg: 0 },
+    companion: null,
+  };
+  // Auto-evolve based on starting level
+  while (pet.level >= 5 && pet.stage < 1 && pet.species.line.length > 1) pet.stage = 1;
+  if (pet.level >= 12 && pet.species.line.length >= 3) pet.stage = 2;
+
+  $('selectionScreen').classList.add('hidden');
+  $('gameScreen').classList.add('active');
+  $('actionButtons').style.display = 'grid';
+  setMessage(`${pet.name} is here! Take good care of them!`);
+  applyLocationBg();
+  render();
+  startGameLoop();
+}
+
+// === Loop ===
+function startGameLoop() {
+  tickInterval = setInterval(tick, 4000);
+  renderInterval = setInterval(render, 500);
+}
+function stopGameLoop() {
+  clearInterval(tickInterval); clearInterval(renderInterval);
+}
+
+function tick() {
+  if (!pet || !pet.alive) return;
+  pet.age = Math.floor((Date.now() - pet.born) / 60000);
+
+  const m = pet.location.mod || {};
+
+  if (pet.sleeping) {
+    pet.energy = Math.min(100, pet.energy + 8);
+    pet.hunger = Math.max(0, pet.hunger - 1);
+    if (pet.energy >= 100) {
+      pet.sleeping = false;
+      setMessage(`${pet.name} woke up refreshed!`);
+    }
+  } else {
+    pet.hunger = clamp(pet.hunger - 2 + (m.hunger||0));
+    pet.fun    = clamp(pet.fun    - 2 + (m.fun||0));
+    pet.energy = clamp(pet.energy - 1 + (m.energy||0));
+    pet.clean  = clamp(pet.clean  - 1.5);
+    pet.hp     = clamp(pet.hp + (m.hp||0));
+  }
+
+  if (!pet.sleeping && Math.random() < 0.08 && pet.poops < 3) {
+    pet.poops++;
+    pet.clean = Math.max(0, pet.clean - 5);
+    addPoop();
+  }
+
+  let drain = 0;
+  if (pet.hunger < 15) drain += 2;
+  if (pet.fun < 10)    drain += 1;
+  if (pet.clean < 15)  drain += 2;
+  if (pet.energy < 10) drain += 1;
+  if (pet.poops >= 3)  drain += 2;
+  if (drain > 0) {
+    pet.hp = Math.max(0, pet.hp - drain);
+    if (pet.hp < 30 && Math.random() < 0.3) setMessage(`${pet.name} doesn't feel well...`);
+  } else if (pet.hp < 100) pet.hp = Math.min(100, pet.hp + 1);
+
+  if (pet.hp > 70 && pet.hunger > 50 && pet.fun > 50 && pet.clean > 50) {
+    addXP(2 + (m.xp||0));
+  }
+  if (pet.hp <= 0) gameOver();
+}
+
+function clamp(v) { return Math.max(0, Math.min(100, v)); }
+
+function addXP(amt) {
+  pet.xp += amt;
+  const need = pet.level * 50;
+  if (pet.xp >= need) {
+    pet.xp -= need;
+    pet.level++;
+    setMessage(`Level up! ${pet.name} is now Lv ${pet.level}!`);
+    checkEvolution();
+  }
+}
+
+function checkEvolution() {
+  const line = pet.species.line;
+  const target = pet.level >= 12 && line.length >= 3 ? 2 : pet.level >= 5 ? 1 : 0;
+  if (target > pet.stage && line[target]) {
+    pet.stage = target;
+    const sprite = $('petSprite');
+    sprite.classList.add('evolving');
+    setTimeout(() => {
+      sprite.classList.remove('evolving');
+      setMessage(`${pet.name} evolved!`);
+    }, 2000);
+  }
+}
+
+function getCurrentSpriteId() { return pet.species.line[pet.stage]; }
+
+// === Actions ===
+function feed() {
+  if (!pet.alive) return;
+  if (pet.sleeping) return setMessage('Shh — they are sleeping.');
+  if (pet.hunger >= 95) return setMessage(`${pet.name} is too full!`);
+  let amt = 25;
+  if (pet.inventory.berry > 0) {
+    pet.inventory.berry--; amt = 40;
+    setMessage(`Yum! A juicy berry!`);
+  } else {
+    setMessage(`${pet.name} munches happily!`);
+  }
+  pet.hunger = Math.min(100, pet.hunger + amt);
+  pet.fun = Math.min(100, pet.fun + 3);
+  showFloat('🍎'); bounce('happy'); addXP(3);
+}
+
+function play() {
+  if (!pet.alive) return;
+  if (pet.sleeping) return setMessage('Shh — they are sleeping.');
+  if (pet.energy < 15) return setMessage(`${pet.name} is too tired to play.`);
+  pet.fun = Math.min(100, pet.fun + 25);
+  pet.energy = Math.max(0, pet.energy - 12);
+  pet.hunger = Math.max(0, pet.hunger - 5);
+  showFloat('❤️'); setMessage(`${pet.name} loves playing with you!`);
+  bounce('happy'); addXP(5);
+}
+
+function toggleSleep() {
+  if (!pet.alive) return;
+  pet.sleeping = !pet.sleeping;
+  setMessage(pet.sleeping ? `${pet.name} is fast asleep...` : `${pet.name} wakes up!`);
+}
+
+function clean() {
+  if (!pet.alive) return;
+  pet.clean = 100;
+  pet.poops = 0;
+  document.querySelectorAll('.poop').forEach(p => p.remove());
+  showFloat('✨'); setMessage('Squeaky clean!'); addXP(2);
+}
+
+// === Zoom ===
+function zoomIn()  { zoomFactor = Math.min(2.0, zoomFactor + 0.2); applyZoom(); }
+function zoomOut() { zoomFactor = Math.max(0.5, zoomFactor - 0.2); applyZoom(); }
+function applyZoom() {
+  $('petSprite').style.setProperty('--zoom', zoomFactor);
+  $('zoomLevel').textContent = Math.round(zoomFactor * 100) + '%';
+}
+
+// === Travel ===
+function openTravel() {
+  if (!pet.alive) return;
+  const grid = $('locationGrid');
+  grid.innerHTML = '';
+  LOCATIONS.forEach(loc => {
+    const card = document.createElement('div');
+    card.className = 'location-card' + (pet.location.id === loc.id ? ' current' : '');
+    card.innerHTML = `
+      <div class="emoji">${loc.emoji}</div>
+      <div class="name">${loc.name}</div>
+      <div class="desc">${loc.desc}</div>
+    `;
+    card.onclick = () => travelTo(loc);
+    grid.appendChild(card);
+  });
+  $('travelPanel').classList.add('active');
+}
+
+function travelTo(loc) {
+  pet.location = loc;
+  pet.energy = Math.max(0, pet.energy - 5);
+  pet.fun = Math.min(100, pet.fun + 8);
+  applyLocationBg();
+  setMessage(`${pet.name} traveled to ${loc.name}!`);
+  closePanel('travelPanel');
+  showFloat(loc.emoji);
+}
+
+function applyLocationBg() {
+  $('petStage').style.setProperty('--bg-grad', pet.location.bg);
+  $('locationBanner').textContent = `📍 ${pet.location.emoji} ${pet.location.name}`;
+}
+
+function closePanel(id) { $(id).classList.remove('active'); }
+
+// === Egg Hunt ===
+let eggHuntState = null;
+
+function startEggHunt() {
+  if (!pet.alive) return;
+  if (pet.energy < 20) return setMessage(`${pet.name} is too tired to hunt!`);
+  eggHuntState = { found: 0, total: 5, time: 30, hits: [] };
+  $('eggsFound').textContent = '0';
+  $('eggsTotal').textContent = '5';
+  $('eggTime').textContent = '30';
+  $('eggResult').textContent = 'Tap bushes & grass to hunt!';
+  populateEggField();
+  $('eggPanel').classList.add('active');
+  eggHuntState.timer = setInterval(() => {
+    eggHuntState.time--;
+    $('eggTime').textContent = eggHuntState.time;
+    if (eggHuntState.time <= 0) endEggHunt();
+  }, 1000);
+}
+
+function populateEggField() {
+  const field = $('eggField');
+  field.innerHTML = '';
+  // Random bushes & grass tufts; some hide rewards
+  const slots = 14;
+  const rewards = ['🥚','🥚','🫐','🍬','💎','—','—','—','—','—','—','—','—','—'];
+  shuffle(rewards);
+  for (let i = 0; i < slots; i++) {
+    const isBush = Math.random() < 0.5;
+    const el = document.createElement('div');
+    el.className = isBush ? 'bush' : 'grass-tuft';
+    el.textContent = isBush ? '🌳' : '🌿';
+    el.style.left = (5 + Math.random() * 85) + '%';
+    el.style.top  = (5 + Math.random() * 75) + '%';
+    el.dataset.reward = rewards[i] || '—';
+    el.onclick = () => digSlot(el);
+    field.appendChild(el);
+  }
+}
+
+function digSlot(el) {
+  if (!eggHuntState) return;
+  const r = el.dataset.reward;
+  el.style.pointerEvents = 'none';
+  el.style.opacity = '0.4';
+
+  const popup = document.createElement('div');
+  popup.className = 'found-egg';
+  popup.style.left = el.style.left;
+  popup.style.top = el.style.top;
+  $('eggField').appendChild(popup);
+  setTimeout(() => popup.remove(), 1200);
+
+  if (r === '🥚') {
+    pet.inventory.egg++;
+    eggHuntState.found++;
+    $('eggsFound').textContent = eggHuntState.found;
+    popup.textContent = '🥚';
+    $('eggResult').textContent = 'You found an egg!';
+  } else if (r === '🫐') {
+    pet.inventory.berry++;
+    popup.textContent = '🫐';
+    $('eggResult').textContent = 'A tasty berry!';
+  } else if (r === '🍬') {
+    pet.inventory.candy++;
+    popup.textContent = '🍬';
+    addXP(8);
+    $('eggResult').textContent = 'Rare candy! +XP';
+  } else if (r === '💎') {
+    pet.inventory.gem++;
+    popup.textContent = '💎';
+    pet.hp = Math.min(100, pet.hp + 20);
+    $('eggResult').textContent = 'Shiny gem! HP boost!';
+  } else {
+    popup.textContent = '💨';
+    $('eggResult').textContent = 'Nothing here...';
+  }
+
+  if (eggHuntState.found >= eggHuntState.total) endEggHunt();
+}
+
+function endEggHunt() {
+  if (eggHuntState && eggHuntState.timer) clearInterval(eggHuntState.timer);
+  pet.energy = Math.max(0, pet.energy - 15);
+  pet.fun = Math.min(100, pet.fun + 12);
+
+  // Hatch eggs into a companion
+  if (pet.inventory.egg > 0 && !pet.companion) {
+    const choices = ROSTER.map(r => r.line[0]);
+    pet.companion = choices[Math.floor(Math.random() * choices.length)];
+    pet.inventory.egg = 0;
+    setMessage(`An egg hatched! A new little buddy joins ${pet.name}!`);
+    addXP(20);
+  } else {
+    setMessage(`${pet.name} had a fun hunt!`);
+  }
+
+  $('eggPanel').classList.remove('active');
+  eggHuntState = null;
+}
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+}
+
+// === Visual helpers ===
+function showFloat(emoji) {
+  const stage = $('petStage');
+  const el = document.createElement('div');
+  el.className = 'heart-anim';
+  el.textContent = emoji;
+  el.style.left = (40 + Math.random() * 30) + '%';
+  el.style.top = '20%';
+  stage.appendChild(el);
+  setTimeout(() => el.remove(), 1000);
+}
+
+function addPoop() {
+  const stage = $('petStage');
+  const p = document.createElement('div');
+  p.className = 'poop';
+  p.textContent = '💩';
+  p.style.left = (15 + Math.random() * 70) + '%';
+  p.title = 'Click to clean!';
+  p.onclick = () => { p.remove(); pet.poops = Math.max(0, pet.poops - 1); };
+  stage.appendChild(p);
+}
+
+function bounce(cls) {
+  const sprite = $('petSprite');
+  sprite.classList.add(cls);
+  setTimeout(() => sprite.classList.remove(cls), 1500);
+}
+
+function setMessage(msg) { $('messageBox').textContent = msg; }
+
+// === Render ===
+function render() {
+  if (!pet) return;
+  $('petName').textContent = pet.name.toUpperCase();
+  $('petLevel').textContent = pet.level;
+  $('petAge').textContent = pet.age;
+
+  const sprite = $('petSprite');
+  const desired = POKEMON_SPRITES(getCurrentSpriteId());
+  if (sprite.src !== desired) sprite.src = desired;
+
+  sprite.classList.toggle('sleeping', pet.sleeping);
+  sprite.classList.toggle('sad', pet.hp < 30 && !pet.sleeping);
+
+  let zzz = $('petStage').querySelector('.zzz');
+  if (pet.sleeping && !zzz) {
+    zzz = document.createElement('div');
+    zzz.className = 'zzz'; zzz.textContent = 'Z z z';
+    $('petStage').appendChild(zzz);
+  } else if (!pet.sleeping && zzz) zzz.remove();
+
+  setBar('hpBar', pet.hp);
+  setBar('hungerBar', pet.hunger);
+  setBar('funBar', pet.fun);
+  setBar('energyBar', pet.energy);
+  setBar('cleanBar', pet.clean);
+  $('xpBar').style.width = ((pet.xp / (pet.level * 50)) * 100) + '%';
+
+  // Companion
+  let comp = $('petStage').querySelector('.companion');
+  if (pet.companion) {
+    if (!comp) {
+      comp = document.createElement('img');
+      comp.className = 'companion';
+      comp.style.right = '12px';
+      $('petStage').appendChild(comp);
+    }
+    const want = POKEMON_SPRITES(pet.companion);
+    if (comp.src !== want) comp.src = want;
+  } else if (comp) comp.remove();
+
+  // Inventory
+  const inv = $('inventory');
+  const items = [
+    pet.inventory.berry > 0 ? `🫐×${pet.inventory.berry}` : null,
+    pet.inventory.candy > 0 ? `🍬×${pet.inventory.candy}` : null,
+    pet.inventory.gem   > 0 ? `💎×${pet.inventory.gem}`   : null,
+    pet.inventory.egg   > 0 ? `🥚×${pet.inventory.egg}`   : null,
+  ].filter(Boolean);
+  inv.innerHTML = items.length
+    ? items.map(t => `<span class="inv-item">${t}</span>`).join('')
+    : '<span style="color:#406030;font-size:11px;">Inventory empty — try Egg Hunt!</span>';
+}
+
+function setBar(id, val) {
+  const el = $(id);
+  el.style.width = Math.max(0, Math.min(100, val)) + '%';
+  el.classList.remove('low', 'mid');
+  if (val < 25) el.classList.add('low');
+  else if (val < 50) el.classList.add('mid');
+}
+
+// === End game ===
+function gameOver() {
+  pet.alive = false;
+  stopGameLoop();
+  $('gameScreen').classList.remove('active');
+  $('gameScreen').style.display = 'none';
+  $('actionButtons').style.display = 'none';
+  $('gameOverScreen').style.display = 'block';
+  $('gameOverText').textContent =
+    `${pet.name} has fainted after ${pet.age} day${pet.age !== 1 ? 's' : ''}. ` +
+    `They reached level ${pet.level}.`;
+}
+
+function restart() {
+  stopGameLoop();
+  document.querySelectorAll('.poop, .heart-anim, .companion').forEach(e => e.remove());
+  pet = null; chosenSpecies = null; zoomFactor = 1;
+  $('gameOverScreen').style.display = 'none';
+  $('gameScreen').style.display = '';
+  $('gameScreen').classList.remove('active');
+  $('selectionScreen').classList.remove('hidden');
+  $('actionButtons').style.display = 'none';
+  document.querySelectorAll('.pokemon-choice').forEach(c => c.classList.remove('selected'));
+  $('nameInput').value = '';
+  $('ageInput').value = '0';
+  applyZoom();
+  $('startBtn').disabled = true;
+}
+
+// === Study / Chat: elementary school knowledge ===
+const KNOWLEDGE = {
+  // ----- MATH -----
+  'even number':       'Even numbers can be split into 2 equal groups: 2, 4, 6, 8, 10... They always end in 0, 2, 4, 6, or 8!',
+  'odd number':        'Odd numbers cannot be split evenly: 1, 3, 5, 7, 9... They always end in 1, 3, 5, 7, or 9!',
+  'prime number':      'A prime number is bigger than 1 and only divides by 1 and itself. Examples: 2, 3, 5, 7, 11, 13!',
+  'fraction':          'A fraction shows part of a whole. 1/2 means one out of two equal parts (one half!).',
+  'decimal':           'A decimal uses a point to show parts of a whole, like 0.5 (which is the same as 1/2).',
+  'percent':           'Percent means "out of 100." 50% = 50 out of 100 = one half!',
+  'perimeter':         'Perimeter is the distance AROUND a shape. Add up all the sides!',
+  'area':              'Area is the SPACE INSIDE a flat shape. For a rectangle: length × width.',
+  'volume':            'Volume is how much space something takes up in 3D. For a box: length × width × height.',
+  'right angle':       'A right angle is exactly 90°. Look at the corner of a book or door — that\'s a right angle!',
+  'triangle':          'A triangle has 3 sides and 3 angles. All the angles add up to 180°!',
+  'square':            'A square has 4 equal sides and 4 right angles. All sides are the same length!',
+  'rectangle':         'A rectangle has 4 sides and 4 right angles. Opposite sides are equal!',
+  'circle':            'A circle has no sides — just one curved edge. The distance across (through the middle) is the diameter!',
+  'pentagon':          'A pentagon has 5 sides! Like a home plate in baseball.',
+  'hexagon':           'A hexagon has 6 sides! Like a honeycomb cell.',
+  'octagon':           'An octagon has 8 sides! Like a STOP sign.',
+  'pi':                'Pi (π) is about 3.14. It connects a circle\'s diameter to its circumference!',
+  'addition':          'Addition (+) means putting numbers TOGETHER. 2 + 3 = 5!',
+  'subtraction':       'Subtraction (−) means TAKING AWAY. 5 − 2 = 3!',
+  'multiplication':    'Multiplication (×) is repeated addition. 4 × 3 means four 3s added: 3+3+3+3 = 12!',
+  'division':          'Division (÷) means SPLITTING into equal groups. 12 ÷ 3 = 4!',
+
+  // ----- ENGLISH / GRAMMAR -----
+  'noun':              'A noun names a person, place, thing, or idea. Examples: dog, school, happiness!',
+  'verb':              'A verb is an action word. Examples: run, jump, think, eat!',
+  'adjective':         'An adjective describes a noun. Like "FUZZY puppy" or "BIG tree"!',
+  'adverb':            'An adverb describes a verb. Many end in -ly. "She runs QUICKLY"!',
+  'pronoun':           'A pronoun replaces a noun. Like he, she, it, they, we, you, I!',
+  'synonym':           'Synonyms are words that mean the SAME thing. Big and large are synonyms!',
+  'antonym':           'Antonyms are OPPOSITES. Hot/cold, up/down, happy/sad!',
+  'vowel':             'The vowels are A, E, I, O, U (and sometimes Y)!',
+  'consonant':         'Consonants are all the letters that aren\'t vowels — like B, C, D, F, G...',
+  'syllable':          'A syllable is a beat in a word. "Cat" has 1, "ti-ger" has 2, "ba-na-na" has 3!',
+  'sentence':          'A sentence is a complete thought. It starts with a CAPITAL letter and ends with . ! or ?',
+  'alphabet':          'The English alphabet has 26 letters: A B C D E F G H I J K L M N O P Q R S T U V W X Y Z!',
+
+  // ----- SCIENCE: ANIMALS -----
+  'mammal':            'Mammals have fur or hair, are warm-blooded, and feed milk to babies. Dogs, cats, whales, and YOU are mammals!',
+  'reptile':           'Reptiles have scales and are cold-blooded. Snakes, lizards, turtles, and crocodiles!',
+  'amphibian':         'Amphibians live both in water and on land. Frogs, toads, and salamanders!',
+  'bird':              'Birds have feathers, lay eggs, and most can fly! All birds have beaks and 2 legs.',
+  'fish':              'Fish live in water, have gills to breathe, and use fins to swim!',
+  'insect':            'Insects have 6 legs and 3 body parts: head, thorax, abdomen. Many have wings!',
+  'dog':               'Dogs are loyal mammals with about 42 teeth and a great sense of smell — 10,000× better than humans!',
+  'cat':               'Cats are mammals with about 230 bones and amazing night vision. They sleep 12-16 hours a day!',
+  'lion':              'Lions are called "King of the Jungle" but live on savannas. A group of lions is a PRIDE!',
+  'elephant':          'Elephants are the largest land animals. They use their trunks like hands and never forget!',
+  'giraffe':           'Giraffes are the tallest animals — up to 18 feet! Their tongues are blue-purple and 18 inches long!',
+  'penguin':           'Penguins are birds that can\'t fly but are super swimmers! They live mostly in the cold south.',
+  'dolphin':           'Dolphins are super smart mammals (not fish!). They breathe air and talk with clicks!',
+  'shark':             'Sharks have skeletons made of CARTILAGE, not bone. Some have 5 rows of teeth!',
+
+  // ----- SCIENCE: PLANTS -----
+  'photosynthesis':    'Photosynthesis is how plants make food from SUNLIGHT, water, and air (CO₂). They give us oxygen!',
+  'roots':             'Roots hold the plant in the ground and soak up water and nutrients!',
+  'stem':              'The stem holds the plant up and carries water from the roots to the leaves.',
+  'leaf':              'Leaves catch sunlight to make food for the plant. That\'s photosynthesis!',
+  'flower':            'Flowers help plants make seeds so new plants can grow!',
+  'seed':              'A seed is a tiny plant baby with food inside. With water and sun, it grows!',
+
+  // ----- SCIENCE: BODY -----
+  'heart':             'The heart pumps blood through your whole body — about 100,000 times every day!',
+  'brain':             'The brain controls EVERYTHING you do, think, and feel. It uses about 20% of your energy!',
+  'lungs':             'You have 2 lungs that take in oxygen and breathe out carbon dioxide.',
+  'skeleton':          'Adults have 206 bones! Babies are born with about 270 — some fuse together as we grow.',
+  'muscles':           'Muscles help you move. You have over 600 muscles, including the strongest one — your tongue!',
+  'five senses':       'The 5 senses: SIGHT (eyes), HEARING (ears), SMELL (nose), TASTE (tongue), and TOUCH (skin)!',
+
+  // ----- SCIENCE: EARTH & SPACE -----
+  'states of matter':  'The 3 main states of matter are SOLID (ice), LIQUID (water), and GAS (steam)!',
+  'water cycle':       'Water cycle: EVAPORATION → CONDENSATION → PRECIPITATION → COLLECTION. Then it repeats!',
+  'rainbow':           'A rainbow has 7 colors: Red, Orange, Yellow, Green, Blue, Indigo, Violet (ROYGBIV)!',
+  'solar system':      'The Solar System has 8 planets: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune!',
+  'planets':           '8 planets in order: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune. (My Very Educated Mother Just Served Us Noodles!)',
+  'sun':               'The Sun is a STAR — a giant ball of hot gas at the center of our Solar System! ☀️',
+  'moon':              'The Moon orbits Earth and causes the ocean tides. It has no air and no weather!',
+  'earth':             'Earth is the 3rd planet from the Sun. It\'s the only known planet with life! 🌍',
+  'mercury':           'Mercury is the SMALLEST planet and CLOSEST to the Sun.',
+  'venus':             'Venus is the HOTTEST planet — even hotter than Mercury because of its thick clouds!',
+  'mars':              'Mars is the RED PLANET. It has the tallest volcano in the Solar System (Olympus Mons)!',
+  'jupiter':           'Jupiter is the LARGEST planet. Its Great Red Spot is a storm bigger than Earth!',
+  'saturn':            'Saturn is famous for its beautiful RINGS made of ice and rock!',
+  'uranus':            'Uranus spins on its side! It\'s a pale blue ice giant.',
+  'neptune':           'Neptune is the windiest planet — winds blow over 1,200 mph!',
+  'star':              'Stars are giant balls of hot gas. Our Sun is the closest star to us!',
+  'galaxy':            'A galaxy is a huge group of stars, gas, and dust. We live in the Milky Way galaxy!',
+  'gravity':           'Gravity is the force that pulls things down toward Earth. It\'s why you don\'t float away!',
+  'dinosaur':          'Dinosaurs lived 65–230 million years ago. Famous ones: T-Rex, Triceratops, Stegosaurus, Velociraptor!',
+
+  // ----- GEOGRAPHY -----
+  'continents':        'There are 7 continents: AFRICA, ANTARCTICA, ASIA, AUSTRALIA, EUROPE, NORTH AMERICA, SOUTH AMERICA!',
+  'oceans':            'There are 5 oceans: PACIFIC, ATLANTIC, INDIAN, ARCTIC, and SOUTHERN!',
+  'countries':         'There are about 195 countries in the world. Some big ones: USA, China, India, Russia, Brazil, Japan!',
+  'capital of usa':    'The capital of the United States is WASHINGTON, D.C.!',
+  'capital of japan':  'The capital of Japan is TOKYO!',
+  'capital of france': 'The capital of France is PARIS!',
+  'capital of england':'The capital of England is LONDON!',
+  'capital of china':  'The capital of China is BEIJING!',
+  '50 states':         'The USA has 50 states. The most recent were Alaska and Hawaii (both in 1959)!',
+  'mount everest':     'Mount Everest is the tallest mountain — 29,032 feet (8,849 m) high!',
+  'amazon':            'The Amazon River is in South America. The Amazon Rainforest makes 20% of Earth\'s oxygen!',
+
+  // ----- HISTORY -----
+  'george washington': 'George Washington was the FIRST U.S. President (1789-1797) and helped win independence from Britain!',
+  'abraham lincoln':   'Abraham Lincoln was the 16th U.S. President. He helped end slavery and led during the Civil War!',
+  'martin luther king':'Martin Luther King Jr. was a civil rights leader who gave the famous "I Have a Dream" speech (1963)!',
+  'columbus':          'Christopher Columbus sailed from Spain in 1492 and reached the Americas!',
+  'independence day':  'July 4, 1776 — the United States declared independence from Britain. Happy Birthday, USA! 🎆',
+  'pyramids':          'The Pyramids of Egypt were built over 4,500 years ago as tombs for pharaohs!',
+
+  // ----- CALENDAR & TIME -----
+  'days of the week':  '7 days: Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday!',
+  'months':            '12 months: January, February, March, April, May, June, July, August, September, October, November, December!',
+  'seasons':           '4 seasons: SPRING (warm), SUMMER (hot), FALL (cool), WINTER (cold)!',
+  'how many seconds':  '60 seconds in a minute, 60 minutes in an hour, 24 hours in a day!',
+};
+
+const TOPICS = {
+  'Math': ['What is 7 x 8?', 'What is a fraction?', 'What is an even number?', 'What is the area of a rectangle?'],
+  'Spelling': ['What is a noun?', 'What is a verb?', 'What is a synonym?', 'What is a vowel?'],
+  'Animals': ['Tell me about dogs', 'What is a mammal?', 'Tell me about dolphins', 'What is an insect?'],
+  'Space': ['Tell me about the planets', 'What is the sun?', 'Tell me about Mars', 'What is gravity?'],
+  'World': ['How many continents?', 'What is the capital of Japan?', 'How many oceans?', 'Tell me about Mt. Everest'],
+  'History': ['Who was George Washington?', 'When is Independence Day?', 'Tell me about the pyramids'],
+  'Body': ['Tell me about the heart', 'What are the 5 senses?', 'How many bones?'],
+};
+
+function openChat() {
+  if (!pet || !pet.alive) return;
+  const log = $('chatLog');
+  if (!log.dataset.greeted) {
+    addChatMsg('pet', `Hi! I'm ${pet.name} and I love learning! Pick a topic or ask me anything! 📚`);
+    log.dataset.greeted = '1';
+  }
+  buildTopicChips();
+  $('chatPanel').classList.add('active');
+  setTimeout(() => $('chatInput').focus(), 100);
+  $('chatInput').onkeydown = e => { if (e.key === 'Enter') sendChat(); };
+  addXP(2);
+}
+
+function buildTopicChips() {
+  const chips = $('topicChips');
+  chips.innerHTML = '';
+  Object.keys(TOPICS).forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.textContent = t;
+    b.onclick = () => suggestQuestion(t);
+    chips.appendChild(b);
+  });
+}
+
+function suggestQuestion(topic) {
+  const qs = TOPICS[topic];
+  const q = qs[Math.floor(Math.random() * qs.length)];
+  $('chatInput').value = q;
+  $('chatInput').focus();
+}
+
+function addChatMsg(who, text) {
+  const log = $('chatLog');
+  const div = document.createElement('div');
+  div.className = 'msg ' + who;
+  if (who === 'pet') {
+    const label = document.createElement('div');
+    label.className = 'who';
+    label.textContent = pet ? pet.name : 'Buddy';
+    div.appendChild(label);
+  }
+  const body = document.createElement('div');
+  body.textContent = text;
+  div.appendChild(body);
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function sendChat() {
+  const input = $('chatInput');
+  const q = input.value.trim();
+  if (!q) return;
+  addChatMsg('user', q);
+  input.value = '';
+  // Pet responds with a small delay for personality
+  setTimeout(() => {
+    const ans = answerQuestion(q);
+    addChatMsg('pet', ans);
+    pet.fun = Math.min(100, pet.fun + 2);
+    addXP(3);
+  }, 400);
+}
+
+function answerQuestion(raw) {
+  const q = raw.toLowerCase().trim();
+
+  // 1) Math expressions ("what is 5 + 3", "5x6", "12 divided by 4")
+  const math = tryMathQuestion(q);
+  if (math) return math;
+
+  // 2) Multiplication-table style: "5 times 7", "5 x 7"
+  const mult = q.match(/\b(\d+)\s*(?:times|x|\*|×)\s*(\d+)\b/);
+  if (mult) {
+    const a = +mult[1], b = +mult[2];
+    return `${a} × ${b} = ${a * b}! ${a * b > 50 ? 'Big number!' : 'Easy!'} 🎯`;
+  }
+
+  // 3) Knowledge base — find the longest matching key
+  let best = null;
+  for (const key of Object.keys(KNOWLEDGE)) {
+    if (q.includes(key)) {
+      if (!best || key.length > best.length) best = key;
+    }
+  }
+  if (best) return KNOWLEDGE[best];
+
+  // 4) Friendly fallbacks
+  if (q.includes('hello') || q.includes('hi ') || q === 'hi' || q.includes('hey'))
+    return `Hi friend! Ready to learn? Try asking about math, animals, or planets! 🌟`;
+  if (q.includes('how are you'))
+    return `I'm having a great day with you! Want to do some learning?`;
+  if (q.includes('thank') )
+    return `You're welcome! Learning is super fun! 💖`;
+  if (q.includes('bye'))
+    return `See you soon! Keep being curious! 👋`;
+  if (q.includes('joke'))
+    return `Why did the math book look sad? Because it had too many problems! 😆`;
+  if (q.includes('your name'))
+    return `My name is ${pet.name}! What's yours?`;
+
+  return `Hmm, I haven't learned about that yet! Try asking about math, spelling, animals, space, the body, or world geography! 🌎`;
+}
+
+function tryMathQuestion(text) {
+  let cleaned = text
+    .replace(/what's|whats|what is|equals|equal to|how much is|tell me/g, '')
+    .replace(/\bplus\b|\badd\b|\bsum of\b/g, '+')
+    .replace(/\bminus\b|\bsubtract\b|\btake away\b|\bless\b/g, '-')
+    .replace(/\btimes\b|\bmultiplied by\b|\bx\b|×/g, '*')
+    .replace(/\bdivided by\b|÷|\bover\b/g, '/')
+    .replace(/[?!.]/g, '')
+    .replace(/[^\d+\-*/().\s]/g, '')
+    .trim();
+  if (!cleaned) return null;
+  if (!/[+\-*/]/.test(cleaned)) return null;
+  if (!/^[\d+\-*/().\s]+$/.test(cleaned)) return null;
+  try {
+    const result = Function('"use strict";return (' + cleaned + ')')();
+    if (Number.isFinite(result)) {
+      const tidy = cleaned.replace(/\s+/g, ' ').replace(/\*/g, ' × ').replace(/\//g, ' ÷ ');
+      return `${tidy} = ${result}! 🎉`;
+    }
+  } catch (e) {}
+  return null;
+}
+
+// Init
+buildSelection();
+applyZoom();
+</script>
+</body>
+</html>
